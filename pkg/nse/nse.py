@@ -32,9 +32,13 @@ if(mode=='vpn'):
         return output
 if(mode=='local'):
     def nsefetch(payload):
+        """
+        Fetch payload with predefined headers and 
+        if there is a value error get hits nse site and get the latest session and then retries
+        """
         try:
             output = requests.get(payload,headers=headers).json()
-            print(output)
+            # print(output)
         except ValueError:
             s =requests.Session()
             output = s.get("http://nseindia.com",headers=headers)
@@ -65,6 +69,9 @@ run_time=datetime.datetime.now()
 indices = ['NIFTY','FINNIFTY','BANKNIFTY']
 
 def running_status():
+    """
+    returns market is open
+    """
     start_now=datetime.datetime.now().replace(hour=9, minute=15, second=0, microsecond=0)
     end_now=datetime.datetime.now().replace(hour=15, minute=30, second=0, microsecond=0)
     return start_now<datetime.datetime.now()<end_now
@@ -497,7 +504,7 @@ def nse_get_fno_lot_sizes(symbol="all",mode="list"):
             return payload
 
 def whoistheboss():
-    return "subhash"
+    return "MISHRA"
 
 def indiavix():
     payload = nsefetch("https://www.nseindia.com/api/allIndices")
@@ -692,7 +699,7 @@ def expiry_history(symbol,start_date="",end_date="",type="options"):
     nsefetch_url = "https://www.nseindia.com/api/historical/fo/derivatives/meta?&from="+start_date+"&to="+end_date+"&symbol="+symbol+""
     payload = nsefetch(nsefetch_url)
 
-    print(payload)
+    # print(payload)
 
     for key, value in payload['expiryDatesByInstrument'].items():
       if type.lower() == "options" and "OPT" in key:
