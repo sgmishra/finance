@@ -750,8 +750,8 @@ niftyindices_headers = {
 }
 
 def index_history(symbol,start_date,end_date):
-    data = "{'name':'"+symbol+"','startDate':'"+start_date+"','endDate':'"+end_date+"'}"
-    payload = requests.post('https://niftyindices.com/Backpage.aspx/getHistoricaldatatabletoString', headers=niftyindices_headers,  data=data).json()
+    data = {"cinfo":str({'name':symbol,'startDate':start_date,'endDate':end_date,'indexName':symbol})}
+    payload = requests.post('https://niftyindices.com/Backpage.aspx/getHistoricaldatatabletoString', headers=niftyindices_headers,  json=data).json()
     payload = json.loads(payload["d"])
     payload=pd.DataFrame.from_records(payload)
     return payload
@@ -940,3 +940,61 @@ def security_wise_archive(from_date, to_date, symbol, series="ALL"):
     url = f"{base_url}?from={from_date}&to={to_date}&symbol={symbol.upper()}&dataType=priceVolumeDeliverable&series={series.upper()}"
     payload = nsefetch(url)
     return pd.DataFrame(payload['data'])
+
+
+#my my
+
+def historical_expiry_dates_by_dates(symbol,start_date="",end_date="",type="options"):
+    return expiry_history(symbol,start_date,end_date,type)
+
+def historical_expiry_dates_by_year(symbol='NIFTY',instrument='OPTIDX',year=2014):
+    symbol = nsesymbolpurify(symbol)
+    payload = nsefetch("https://www.nseindia.com/api/historical/foCPV/expireDts?instrument={intru}&symbol={symbol}&year={year}".format(intru=instrument,symbol=symbol,year=str(year)))
+    return payload
+
+def historical_option_expiry_dates_by_year(symbol,year):
+    if any(x in symbol for x in indices):
+        return historical_expiry_dates_by_year(symbol=symbol,instrument='OPTIDX',year=year)
+    else:
+        return historical_expiry_dates_by_year(symbol=symbol,instrument='OPTSTK',year=year)
+    
+def historical_future_expiry_dates_by_year(symbol,year):
+    if any(x in symbol for x in indices):
+        return historical_expiry_dates_by_year(symbol=symbol,instrument='FUTIDX',year=year)
+    else:
+        return historical_expiry_dates_by_year(symbol=symbol,instrument='FUTSTK',year=year)
+
+
+def historical_derivative_data(symbol,start_date,end_date,instrumentType,expiry_date,strikePrice="",optionType=""):
+    
+    instrumentType = instrumentType.lower()
+
+    if(instrumentType=="options"):
+        instrumentType="OPTSTK"
+        if("NIFTY" in symbol): instrumentType="OPTIDX"
+        
+    if(instrumentType=="futures"):
+        instrumentType="FUTSTK"
+        if("NIFTY" in symbol): instrumentType="FUTIDX"
+        
+    if(strikePrice!=""):
+        strikePrice = "%.2f" % strikePrice
+        strikePrice = str(strikePrice)
+        nsefetch_url = "https://www.nseindia.com/api/historical/foCPV?from="+str(start_date)+"&to="+str(end_date)+"&optionType="+optionType+"&expiryDate="+expiry_date+"&instrumentType="+instrumentType+"&strikePrice="+strikePrice+"&symbol="+symbol+"&csv=true"
+    else:
+        nsefetch_url = "https://www.nseindia.com/api/historical/foCPV?from="+str(start_date)+"&to="+str(end_date)+"&optionType="+optionType+"&expiryDate="+expiry_date+"&instrumentType="+instrumentType+"&symbol="+symbol+"&csv=true"
+    payload = nsefetch(nsefetch_url)
+    logging.info(nsefetch_url)
+    logging.info(payload)
+    return pd.DataFrame.from_records(payload["data"])
+
+def historical_price_on_expiry(symbol,instrumentType,expiry_date,optionType=""):
+    end_date=datetime.datetime.strptime(expiry_date, '%d-%b-%Y').strftime('%d-%m-%Y')
+    start_date=(datetime.datetime.strptime(expiry_date, '%d-%b-%Y')- datetime.timedelta(days=2)).strftime('%d-%m-%Y')
+    payload=historical_derivative_data(symbol,start_date,end_date,instrumentType,expiry_date,"",optionType)
+    return payload[payload['FH_TIMESTAMP']==payload['FH_TIMESTAMP'].max()]['FH_UNDERLYING_VALUE'].drop_duplicates()[0]
+
+
+def print_calender(year):
+    import calendar
+    print(calendar.calendar(year))
