@@ -941,7 +941,6 @@ def security_wise_archive(from_date, to_date, symbol, series="ALL"):
     payload = nsefetch(url)
     return pd.DataFrame(payload['data'])
 
-
 #my my
 
 def historical_expiry_dates_by_dates(symbol,start_date="",end_date="",type="options"):
@@ -994,6 +993,28 @@ def historical_price_on_expiry(symbol,instrumentType,expiry_date,optionType=""):
     payload=historical_derivative_data(symbol,start_date,end_date,instrumentType,expiry_date,"",optionType)
     return payload[payload['FH_TIMESTAMP']==payload['FH_TIMESTAMP'].max()]['FH_UNDERLYING_VALUE'].drop_duplicates()[0]
 
+def historical_daily_prices_equity(symbol,start_date,end_date,batch_size):
+    start_date = datetime.datetime.strptime(start_date, "%d-%m-%Y")
+    end_date = datetime.datetime.strptime(end_date, "%d-%m-%Y")
+    diff = end_date-start_date
+    print("Total batches: "+str(int(diff.days/batch_size)+int(diff.days%batch_size!=0)))
+    total=pd.DataFrame()
+    for i in range (0,int(diff.days/batch_size)):
+        temp_date = (start_date+datetime.timedelta(days=(batch_size))).strftime("%d-%m-%Y")
+        start_date = datetime.datetime.strftime(start_date, "%d-%m-%Y")
+        print(start_date,temp_date)
+        total = pd.concat([total, security_wise_archive(start_date, temp_date, symbol)])
+        print("Batch: "+str(i)+", Row count: "+ str(len(total)))
+        start_date = datetime.datetime.strptime(temp_date, "%d-%m-%Y")
+        start_date = (start_date+datetime.timedelta(days=(1)))
+
+    start_date = datetime.datetime.strftime(start_date, "%d-%m-%Y")
+    end_date = datetime.datetime.strftime(end_date, "%d-%m-%Y")
+    print(start_date,end_date)
+    total = pd.concat([total, security_wise_archive(start_date, end_date, symbol)])
+    print("Batch: Final, Row count: "+ str(len(total)))
+    payload = total.iloc[::-1].reset_index(drop=True)
+    return payload
 
 def print_calender(year):
     import calendar
